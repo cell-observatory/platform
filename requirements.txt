@@ -30,3 +30,6 @@ ray[all]
 nvitop
 bpytop
 glances
+tensorstore
+scikit-learn
+supabase

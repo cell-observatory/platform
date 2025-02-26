@@ -292,9 +292,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
                 
-      - name: Pull latest docker
-        run: |
-            docker pull ghcr.io/${{ github.repository }}:${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}
+      # - name: Pull latest docker
+      #   run: |
+      #       docker pull ghcr.io/${{ github.repository }}:${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}
 
       - name: Build Apptainer from local docker image we just pulled to a local .sif
         run: |
