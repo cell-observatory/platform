@@ -31,3 +31,5 @@ nvitop
 bpytop
 glances
 tensorstore
+scikit-learn
+supabase
