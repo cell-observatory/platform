@@ -1,0 +1,346 @@
+# docker_action.yml
+name: docker-ubuntu-build
+
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - 'main'
+      - 'develop'
+      - 'releases/**'
+      - 'release/**'
+      - 'release'
+
+# only allow one copy of this workflow to run at a time (the group specified by workflow name)
+# cancel current workflows if they are running, so that we just run the latest queue'd.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io  
+  IMAGE_NAME: ${{ github.repository }}  # github.repository as <account>/<repo>
+  DO_SIGNING: ${{ false }}
+  BRANCH: ${{ github.head_ref || github.ref_name }}   # 'main' or 'develop'
+  PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings
+
+jobs:
+  cleanup-job:
+    runs-on:
+      group: Default
+    container:
+      image: ghcr.io/catthehacker/ubuntu:act-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: 'Cleanup build folder'
+        run: |
+          ls -la ./
+          rm -rf ./* || true
+          rm -rf ./.??* || true
+          ls -la ./
+
+  cleanup-job-docker-runners:
+    runs-on:
+      group: docker-runners
+    container:
+      image: ghcr.io/catthehacker/ubuntu:act-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: 'Cleanup build folder'
+        run: |
+          ls -la ./
+          rm -rf ./* || true
+          rm -rf ./.??* || true
+          ls -la ./
+
+  build-docker:      
+    needs: cleanup-job-docker-runners
+    if: always()
+    name: docker_image_build
+    runs-on:
+      group: docker-runners
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - CUDA_VERSION: "torch_cuda_12_8"
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+
+      - name: Show default environment variables
+        run: |
+          echo "The job_id is: $GITHUB_JOB"   # reference the default environment variables
+          echo "The id of this action is: $GITHUB_ACTION"   # reference the default environment variables
+          echo "The run id is: $GITHUB_RUN_ID"
+          echo "The GitHub Actor's username is: $GITHUB_ACTOR"
+          echo "GitHub SHA: $GITHUB_SHA"
+
+      # The repo gets volume mapped into the container automatically in test-docker
+      - name: Checkout whole repo  
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: List files in the repository
+        run: |
+          ls -lhXR ${{ github.workspace }}
+
+      - name: Set file permissions in the repository
+        run: |
+          chmod -R 777 ${{ github.workspace }}
+          ls -lhXR ${{ github.workspace }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker 
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}    # aka ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          labels: |
+            org.opencontainers.image.title=${{ github.repository }}_ubuntu
+            org.opencontainers.image.vendor=Advanced Bioimaging Center at UC Berkeley and Janelia Research Campus
+          tags: |
+            type=schedule
+            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=branch
+            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=tag
+            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=pr
+
+      - name: Build Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BRANCH_NAME=${{ env.BRANCH }}
+          no-cache-filters: |
+            pip_install
+# cache the nvidia image and setup.  Then don't cache the "pip_install" build stage where we pip install the requirements.txt              
+          target: ${{ matrix.CUDA_VERSION }}
+          
+
+  push-docker:      
+    needs: build-docker
+    name: docker_image_push
+    runs-on:
+      group: docker-runners
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - CUDA_VERSION: "torch_cuda_12_8"
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+
+      - name: Show default environment variables
+        run: |
+          echo "The job_id is: $GITHUB_JOB"   # reference the default environment variables
+          echo "The id of this action is: $GITHUB_ACTION"   # reference the default environment variables
+          echo "The run id is: $GITHUB_RUN_ID"
+          echo "The GitHub Actor's username is: $GITHUB_ACTOR"
+          echo "GitHub SHA: $GITHUB_SHA"
+
+      # The repo gets volume mapped into the container automatically in test-docker
+      - name: Checkout whole repo  
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: List files in the repository
+        run: |
+          ls -lhXR ${{ github.workspace }}
+
+      - name: Set file permissions in the repository
+        run: |
+          chmod -R 777 ${{ github.workspace }}
+          ls -lhXR ${{ github.workspace }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker 
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}    # aka ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          labels: |
+            org.opencontainers.image.title=${{ github.repository }}_ubuntu
+            org.opencontainers.image.vendor=Advanced Bioimaging Center at UC Berkeley and Janelia Research Campus
+          tags: |
+            type=schedule
+            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=branch
+            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=tag
+            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=pr
+
+      - name: Push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BRANCH_NAME=${{ env.BRANCH }}       
+          target: ${{ matrix.CUDA_VERSION }}
+
+  build-apptainer:
+    needs: [build-docker, cleanup-job]
+    runs-on:
+      group: Default
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - CUDA_VERSION: "torch_cuda_12_8"
+    steps:
+      # The repo gets volume mapped into the container automatically in test-docker
+      - name: Checkout whole repo  
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: List files in the directory
+        run: |
+            ls -lhXR
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}    # aka ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+                
+      - name: Pull latest docker
+        run: |
+            docker pull ghcr.io/${{ github.repository }}:${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}
+
+      - name: Build Apptainer from local docker image we just pulled to a local .sif
+        run: |
+            apptainer build --nv --force ${{ github.workspace }}/${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif docker-daemon:ghcr.io/${{ github.repository }}:${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}
+
+      # - name: Login and Push Apptainer SIF to github
+      #   run: |
+      #       ls *.si*         
+      #       apptainer remote login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io       
+      #       apptainer push -U ${{ github.workspace }}/${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif oras://ghcr.io/${{ github.repository }}:${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}_sif  
+
+
+  test-apptainer:
+    needs: build-apptainer    
+    runs-on:
+      group: Default
+    strategy:
+      matrix:
+        include:
+          - CUDA_VERSION: "torch_cuda_12_8"
+            test_framework: "pytorch"
+      fail-fast: false  # do the other tests in the matrix even if one of them fails
+    env: 
+      APPTAINER_RUN: apptainer exec --nv ${{ github.workspace }}/${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif
+    steps:
+      - name: List files in the repository
+        run: |
+          ls -lhXR ${{ github.workspace }}
+
+      - name: Set file permissions in the repository
+        run: |
+          chmod -R 777 ${{ github.workspace }}
+          ls -lhXR ${{ github.workspace }}
+
+      - name: investigate 
+        run: |
+          pwd
+          id
+          id -u
+          ls -lhXR
+          
+      - name: pip list 
+        run: ${{ env.APPTAINER_RUN }} pip list
+
+      - name: Test NVIDIA-SMI
+        run:  ${{ env.APPTAINER_RUN }} nvidia-smi
+
+      # - name: Test ${{ matrix.test_framework }}
+      #   run: ${{ env.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/test_${{ matrix.test_framework }}.py
