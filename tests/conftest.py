@@ -5,21 +5,36 @@ import pytest
 @pytest.fixture(scope="session")
 def kargs():
     repo = Path.cwd()
-    num_modes = 15
 
     kargs = dict(
         repo=repo,
-        num_modes=num_modes,
         prediction_filename_pattern=r"*[!_gt|!_realspace|!_noisefree|!_predictions_psf|!_corrected_psf|!_reconstructed_psf].tif",
-        wavelength=.510,
-        lateral_voxel_size=.097,
-        axial_voxel_size=.2,
-        freq_strength_threshold=.01,
-        prediction_threshold=0.,
-        confidence_threshold=0.02,
-        batch_size=64,
-        ignore_modes=[0, 1, 2, 4],
-        big_job_cpu_workers=3,
+        dataset=repo/"dataset/training_dataset/YuMB_lambda510/z200-y97-x97/z64-y64-x64/z15/",
+        outdir=repo/'pretrained_models',
+        input_shape=64,
+        modes=15,
+        batch_size=512,
+        hidden_size=768,
+        patches=32,
+        heads=16,
+        repeats=4,
+        opt='lamb',
+        lr=5e-4,
+        wd=5e-5,
+        ld=None,
+        ema=(.998, 1.),
+        epochs=5,
+        warmup=1,
+        cooldown=1,
+        clip_grad=.5,
+        fixedlr=False,
+        dropout=0.1,
+        fixed_dropout_depth=False,
+        amp='fp16',
+        finetune=None,
+        profile=False,
+        workers=1,
+        gpu_workers=2,
+        cpu_workers=16,
     )
-
     return kargs
