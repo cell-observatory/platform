@@ -294,7 +294,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           
-      - name: Get bootstrap pytorch .sif from 'Apptainer'
+      - name: Get bootstrap pytorch .sif from 'apptainerfile.def'
       #  (e.g. 25.01-py3)
         id: bootstrap_sif
         run: |
@@ -307,11 +307,11 @@ jobs:
             cat "$GITHUB_OUTPUT"
             
 
-      - name: Get bootstrap pytorch version from 'Apptainer'
+      - name: Get bootstrap pytorch version from 'apptainerfile.def'
       #  (e.g. 25.01-py3)
         id: sif_pytorch_version
         run: |
-            echo "SIF_PYTORCH_VERSION=$(sed -n 's/From: pytorch_//p' apptainerfile.def)" >> "$GITHUB_OUTPUT"
+            echo "SIF_PYTORCH_VERSION=$(grep -Po 'pytorch\K.*(?=.sif)' apptainerfile.def)" >> "$GITHUB_OUTPUT"
             cat "$GITHUB_OUTPUT"
 
       - name: Get dockerfile pytorch version from 'Dockerfile'
@@ -351,18 +351,17 @@ jobs:
           script: |
               core.setFailed('dockerfile and apptainer.def recipe do not have the same pytorch version! SIF_PYTORCH_VERSION = $SIF_PYTORCH_VERSION DOCKER_PYTORCH_VERSION = $DOCKER_PYTORCH_VERSION')
 
-      - name: If apptainer bootstrap doesn't exist, build it ${{ steps.bootstrap_sif.outputs.SIF_FILE }} from ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
+      - name: If apptainer bootstrap doesn't exist, build (${{ steps.bootstrap_sif.outputs.SIF_FILE }} from ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}).
         if: steps.check_if_bootstrap_SIF_exists.outputs.files_exists == 'false'
-        # Only runs if all of the files exists
         env:
           DOCKERFILE_PYTORCH_IMAGE: ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
           SIF_FILE: ${{ steps.bootstrap_sif.outputs.SIF_FILE }}
         run: |
-            mkdir -p ~/SIF_files/
-            apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
+            mkdir -p ~/SIF_files/  &&  apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
 
       - name: Build ${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif from apptainerfile.def definition file
         run: |
+            /bin/cp -sf ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} .
             apptainer build --nv --force ${{ github.workspace }}/${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif apptainerfile.def
 
       # - name: Login and Push Apptainer SIF to github
