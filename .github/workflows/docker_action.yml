@@ -311,7 +311,7 @@ jobs:
       #  (e.g. 25.01-py3)
         id: sif_pytorch_version
         run: |
-            echo "SIF_PYTORCH_VERSION=$(grep -Po 'pytorch\K.*(?=.sif)' apptainerfile.def)" >> "$GITHUB_OUTPUT"
+            echo "SIF_PYTORCH_VERSION=$(grep -Po 'pytorch_\K.*(?=.sif)' apptainerfile.def)" >> "$GITHUB_OUTPUT"
             cat "$GITHUB_OUTPUT"
 
       - name: Get dockerfile pytorch version from 'Dockerfile'
