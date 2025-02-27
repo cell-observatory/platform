@@ -263,15 +263,18 @@ jobs:
     runs-on:
       group: Default  
     outputs:
-      SIF_PATH: ${{ steps.step1.outputs.SIF_PATH }}
+      SIF_PATH: ${{ steps.step1.outputs.MY_PATH }}
     steps:
-      - name: character-replacement
+      - name: clean name of "/" characters
         id: step1
         run: |
-          REPO=${{ github.head_ref || github.ref_name }}
-          SIF_PATH="${REPO//-/_}"
-          echo $SIF_PATH
-          echo $SIF_PATH >> "$GITHUB_OUTPUT"
+            echo "${{ github.head_ref || github.ref_name }}" | tr '/' '_'
+            {
+              echo 'MY_PATH<<EOF'
+              echo "${{ github.head_ref || github.ref_name }}" | tr '/' '_'
+              echo EOF
+            } >> "$GITHUB_OUTPUT"            
+            cat "$GITHUB_OUTPUT"
 
 
   build-and-test-apptainer:
