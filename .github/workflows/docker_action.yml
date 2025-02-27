@@ -297,7 +297,12 @@ jobs:
       - name: Get bootstrap pytorch .sif from 'Apptainer' (e.g. 25.01-py3)
         id: bootstrap_sif
         run: |
-            echo "SIF_FILE=$(sed -n 's/From: //p' apptainerfile.def)\n" >> $GITHUB_OUTPUT
+            {
+              echo 'SIF_FILE<<EOF'
+              sed -n 's/From: //p' apptainerfile.def
+              echo EOF
+            } >> "$GITHUB_ENV"            
+            echo "output will be  "
             echo $GITHUB_OUTPUT
 
       - name: Get bootstrap pytorch version from 'Apptainer' (e.g. 25.01-py3)
