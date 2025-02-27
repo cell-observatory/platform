@@ -294,6 +294,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+
+      - name: Set color
+        id: color-selector
+        run: echo "SELECTED_COLOR=green" >> "$GITHUB_OUTPUT"
+      - name: Get color
+        env:
+          SELECTED_COLOR: ${{ steps.color-selector.outputs.SELECTED_COLOR }}
+        run: echo "The selected color is $SELECTED_COLOR"
+
+          
       - name: Get bootstrap pytorch .sif from 'Apptainer' (e.g. 25.01-py3)
         id: bootstrap_sif
         run: |
@@ -301,21 +311,21 @@ jobs:
               echo 'SIF_FILE<<EOF'
               sed -n 's/From: //p' apptainerfile.def
               echo EOF
-            } >> "$GITHUB_ENV"            
+            } >> "$GITHUB_OUTPUT"            
             echo "output will be  "
             echo $GITHUB_OUTPUT
 
       - name: Get bootstrap pytorch version from 'Apptainer' (e.g. 25.01-py3)
         id: sif_pytorch_version
         run: |
-            echo "SIF_PYTORCH_VERSION=$(sed -n 's/From: pytorch_//p' apptainerfile.def)\n" >> $GITHUB_OUTPUT
-            echo $GITHUB_OUTPUT
+            echo "SIF_PYTORCH_VERSION=$(sed -n 's/From: pytorch_//p' apptainerfile.def)\n" >> "$GITHUB_OUTPUT"
+            echo "$GITHUB_OUTPUT"
 
       - name: Get dockerfile pytorch version from 'Dockerfile' (e.g. 25.01-py3)
         id: dockerfile_pytorch_version
         run: |
-            echo "DOCKER_PYTORCH_VERSION=$(grep -Po 'pytorch:\K.*(?= as)' Dockerfile)\n" >> $GITHUB_OUTPUT
-            echo $GITHUB_OUTPUT
+            echo "DOCKER_PYTORCH_VERSION=$(grep -Po 'pytorch:\K.*(?= as)' Dockerfile)\n" >> "$GITHUB_OUTPUT"
+            echo "$GITHUB_OUTPUT"
 
       - name: Raise error if dockerfile and apptainerfile.def disagree on pytorch version
         if: ${{ ! startsWith( steps.sif_pytorch_version.outputs.SIF_PYTORCH_VERSION, steps.dockerfile_pytorch_version.outputs.DOCKER_PYTORCH_VERSION) }}
@@ -327,8 +337,8 @@ jobs:
       - name: Get dockerfile pytorch image from 'Dockerfile' (e.g. nvcr.io/nvidia/pytorch:25.01-py3)
         id: dockerfile_pytorch_image
         run: |
-            echo "DOCKER_PYTORCH_IMAGE=$(grep -Po 'FROM \K.*(?= as)' Dockerfile)\n" >> $GITHUB_OUTPUT
-            echo $GITHUB_OUTPUT
+            echo "DOCKER_PYTORCH_IMAGE=$(grep -Po 'FROM \K.*(?= as)' Dockerfile)\n" >> "$GITHUB_OUTPUT"
+            echo "$GITHUB_OUTPUT"
 
       - name: Check if bootstrap SIF file exists
         id: check_if_bootstrap_SIF_exists
