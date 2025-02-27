@@ -319,19 +319,19 @@ jobs:
       - name: Get bootstrap pytorch version from 'Apptainer' (e.g. 25.01-py3)
         id: sif_pytorch_version
         run: |
-            echo "SIF_PYTORCH_VERSION=$(sed -n 's/From: pytorch_//p' apptainerfile.def)\n" >> "$GITHUB_OUTPUT"
+            echo "SIF_PYTORCH_VERSION=$(sed -n 's/From: pytorch_//p' apptainerfile.def)" >> "$GITHUB_OUTPUT"
             echo "$GITHUB_OUTPUT"
 
       - name: Get dockerfile pytorch version from 'Dockerfile' (e.g. 25.01-py3)
         id: dockerfile_pytorch_version
         run: |
-            echo "DOCKER_PYTORCH_VERSION=$(grep -Po 'pytorch:\K.*(?= as)' Dockerfile)\n" >> "$GITHUB_OUTPUT"
+            echo "DOCKER_PYTORCH_VERSION=$(grep -Po 'pytorch:\K.*(?= as)' Dockerfile)" >> "$GITHUB_OUTPUT"
             echo "$GITHUB_OUTPUT"
 
       - name: Get dockerfile pytorch image from 'Dockerfile' (e.g. nvcr.io/nvidia/pytorch:25.01-py3)
         id: dockerfile_pytorch_image
         run: |
-            echo "DOCKER_PYTORCH_IMAGE=$(grep -Po 'FROM \K.*(?= as)' Dockerfile)\n" >> "$GITHUB_OUTPUT"
+            echo "DOCKER_PYTORCH_IMAGE=$(grep -Po 'FROM \K.*(?= as)' Dockerfile)" >> "$GITHUB_OUTPUT"
             echo "$GITHUB_OUTPUT"
 
       - name: Check if bootstrap SIF file exists
@@ -356,7 +356,7 @@ jobs:
         uses: actions/github-script@v3
         with:
           script: |
-              core.setFailed('dockerfile and apptainer.def recipe do not have the same pytorch version!\n sif version = $SIF_PYTORCH_VERSION\n docker version = $DOCKER_PYTORCH_VERSION ')')
+              core.setFailed('dockerfile and apptainer.def recipe do not have the same pytorch version! SIF_PYTORCH_VERSION = $SIF_PYTORCH_VERSION DOCKER_PYTORCH_VERSION = $DOCKER_PYTORCH_VERSION')
 
       - name: If apptainer bootstrap doesn't exist, build it.
         if: steps.check_if_bootstrap_SIF_exists.outputs.files_exists == 'false'
