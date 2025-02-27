@@ -12,6 +12,7 @@ BATCH=16384
 if [ $CLUSTER = 'slurm' ];then
   HOMEDIR="/clusterfs/nvme/thayer"
   REPO="$HOMEDIR/platform"
+  OUTDIR="$HOMEDIR/pretrained_models"
   DATASET="$HOMEDIR/dataset"
   RAY_TEMPLATE="--ray $REPO/cluster/ray_slurm_cluster.sh"
   REQS="--partition abc_a100 --mem=500GB --cpus 16 --gpus 4 --nodes $NODES"
@@ -20,6 +21,7 @@ if [ $CLUSTER = 'slurm' ];then
 elif [ $CLUSTER = 'lsf' ];then
   HOMEDIR="/groups/betzig/betziglab/thayer"
   REPO="$HOMEDIR/platform"
+  OUTDIR="$HOMEDIR/pretrained_models"
   DATASET="$HOMEDIR/dataset"
   RAY_TEMPLATE="--ray $REPO/cluster/ray_lsf_cluster.sh"
   APPTAINER="--apptainer $HOMEDIR/develop_torch_cuda_12_8.sif"
@@ -39,7 +41,7 @@ else
 fi
 
 DATA="$DATASET/$SUBSET/train/YuMB_lambda510/z200-y125-x125/z$MODES"
-CONFIG=" --modes ${MODES} --dataset ${DATA} --input_shape ${SHAPE} "
+CONFIG=" --modes ${MODES} --dataset ${DATA} --input_shape ${SHAPE} --outdir ${OUTDIR} "
 
 if [ $PARTITION = 'gpu_h100' ];then
     AVAL=$(bhosts -o "host_name run:-6"  h100s | grep -w "0" | awk '{print $1}' | wc -l)
