@@ -20,7 +20,7 @@ on:
 # cancel current workflows if they are running (unless on main or releases, so that we just run the latest queue'd.
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: ${{ !contains(github.head_ref || github.ref_name, 'release/') || !contains(github.head_ref || github.ref_name, 'main/') }}
+  cancel-in-progress: ${{ !contains(github.head_ref || github.ref_name, 'release/') || !contains(github.head_ref || github.ref_name, 'main/') || !contains(github.head_ref || github.ref_name, 'develop/')}}
 
 env:
   REGISTRY: ghcr.io  
