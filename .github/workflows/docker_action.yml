@@ -29,21 +29,21 @@ env:
   PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings
 
 jobs:
-  cleanup-job:
-    runs-on:
-      group: Default
-    container:
-      image: ghcr.io/catthehacker/ubuntu:act-22.04
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: 'Cleanup build folder'
-        run: |
-          ls -la ./
-          rm -rf ./* || true
-          rm -rf ./.??* || true
-          ls -la ./
+  # cleanup-job:
+  #   runs-on:
+  #     group: Default
+  #   container:
+  #     image: ghcr.io/catthehacker/ubuntu:act-22.04
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   steps:
+  #     - name: 'Cleanup build folder'
+  #       run: |
+  #         ls -la ./
+  #         rm -rf ./* || true
+  #         rm -rf ./.??* || true
+  #         ls -la ./
 
   cleanup-job-docker-runners:
     runs-on:
@@ -261,7 +261,7 @@ jobs:
           target: ${{ matrix.CUDA_VERSION }}
 
   build-apptainer:
-    needs: [build-docker, cleanup-job]
+    needs: build-docker
     runs-on:
       group: Default
     permissions:
