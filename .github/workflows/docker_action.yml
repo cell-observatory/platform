@@ -379,7 +379,7 @@ jobs:
           script: |
               core.setFailed('dockerfile and apptainer.def recipe do not have the same pytorch version! SIF_PYTORCH_VERSION = $SIF_PYTORCH_VERSION DOCKER_PYTORCH_VERSION = $DOCKER_PYTORCH_VERSION')
 
-      - name: If apptainer bootstrap doesn't exist, build (${{ steps.bootstrap_sif.outputs.SIF_FILE }} from ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}).
+      - name: If apptainer bootstrap doesn't exist, build it. (${{ steps.bootstrap_sif.outputs.SIF_FILE }} from ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}) 
         if: steps.check_if_bootstrap_SIF_exists.outputs.files_exists == 'false'
         env:
           DOCKERFILE_PYTORCH_IMAGE: ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
@@ -387,7 +387,7 @@ jobs:
         run: |
             mkdir -p ~/SIF_files/  &&  apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
 
-      - name: Build ${{ needs.sif_path.outputs.SIF_PATH }}_${{ matrix.CUDA_VERSION }}.sif from apptainerfile.def definition file
+      - name: Build "${{ needs.sif_path.outputs.SIF_PATH }}_${{ matrix.CUDA_VERSION }}.sif" from apptainerfile.def definition file
         run: |
             /bin/cp -sf ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} .
             apptainer build --nv --force ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ matrix.CUDA_VERSION }}.sif apptainerfile.def
