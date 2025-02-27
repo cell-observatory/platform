@@ -306,10 +306,13 @@ jobs:
           
       - name: Get bootstrap pytorch .sif from 'Apptainer' (e.g. 25.01-py3)
         id: bootstrap_sif
+        env:
+          TEXT: sed -n 's/From: //p' apptainerfile.def
         run: |
+            echo $TEXT
             {
               echo 'SIF_FILE<<EOF'
-              sed -n 's/From: //p' apptainerfile.def
+              $TEXT
               echo EOF
             } >> "$GITHUB_OUTPUT"            
             echo "output will be  "
@@ -327,13 +330,6 @@ jobs:
             echo "DOCKER_PYTORCH_VERSION=$(grep -Po 'pytorch:\K.*(?= as)' Dockerfile)\n" >> "$GITHUB_OUTPUT"
             echo "$GITHUB_OUTPUT"
 
-      - name: Raise error if dockerfile and apptainerfile.def disagree on pytorch version
-        if: ${{ ! startsWith( steps.sif_pytorch_version.outputs.SIF_PYTORCH_VERSION, steps.dockerfile_pytorch_version.outputs.DOCKER_PYTORCH_VERSION) }}
-        uses: actions/github-script@v3
-        with:
-          script: |
-              core.setFailed('dockerfile and apptainer.def recipe do not have the same pytorch version! ')
-
       - name: Get dockerfile pytorch image from 'Dockerfile' (e.g. nvcr.io/nvidia/pytorch:25.01-py3)
         id: dockerfile_pytorch_image
         run: |
@@ -343,12 +339,32 @@ jobs:
       - name: Check if bootstrap SIF file exists
         id: check_if_bootstrap_SIF_exists
         uses: andstor/file-existence-action@v3
+        env:
+          DOCKERFILE_PYTORCH_IMAGE: ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
+          SIF_FILE: ${{ steps.bootstrap_sif.outputs.SIF_FILE }}
+          SIF_PYTORCH_VERSION: ${{ steps.sif_pytorch_version.outputs.SIF_PYTORCH_VERSION }}
+          DOCKER_PYTORCH_VERSION: ${{ steps.dockerfile_pytorch_version.outputs.DOCKER_PYTORCH_VERSION }}
         with:
           files: "~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }}"
+
+
+      - name: Raise error if dockerfile and apptainerfile.def disagree on pytorch version
+        if: ${{ ! startsWith( steps.sif_pytorch_version.outputs.SIF_PYTORCH_VERSION, steps.dockerfile_pytorch_version.outputs.DOCKER_PYTORCH_VERSION) }}
+        env:
+          DOCKERFILE_PYTORCH_IMAGE: ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
+          SIF_FILE: ${{ steps.bootstrap_sif.outputs.SIF_FILE }}
+          SIF_PYTORCH_VERSION: ${{ steps.sif_pytorch_version.outputs.SIF_PYTORCH_VERSION }}
+          DOCKER_PYTORCH_VERSION: ${{ steps.dockerfile_pytorch_version.outputs.DOCKER_PYTORCH_VERSION }}
+        uses: actions/github-script@v3
+        with:
+          script: |
+              core.setFailed('dockerfile and apptainer.def recipe do not have the same pytorch version!\n sif version = $SIF_PYTORCH_VERSION\n docker version = $DOCKER_PYTORCH_VERSION ')')
 
       - name: If apptainer bootstrap doesn't exist, build it.
         if: steps.check_if_bootstrap_SIF_exists.outputs.files_exists == 'false'
         # Only runs if all of the files exists
+        env:
+          DOCKERFILE_PYTORCH_IMAGE: ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
         run: |
             mkdir -p ~/SIF_files/
             apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
