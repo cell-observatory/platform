@@ -18,7 +18,7 @@ on:
 # only allow one copy of this workflow to run at a time (the group specified by workflow name)
 # cancel current workflows if they are running, so that we just run the latest queue'd.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: true
 
 env:
