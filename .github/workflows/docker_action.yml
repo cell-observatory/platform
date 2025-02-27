@@ -313,7 +313,7 @@ jobs:
               echo EOF
             } >> "$GITHUB_OUTPUT"            
             echo "output will be  "
-            echo $GITHUB_OUTPUT
+            echo "$GITHUB_OUTPUT"
 
       - name: Get bootstrap pytorch version from 'Apptainer' (e.g. 25.01-py3)
         id: sif_pytorch_version
