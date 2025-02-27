@@ -293,18 +293,9 @@ jobs:
           registry: ${{ env.REGISTRY }}    # aka ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-
-      - name: Set color
-        id: color-selector
-        run: echo "SELECTED_COLOR=green" >> "$GITHUB_OUTPUT"
-      - name: Get color
-        env:
-          SELECTED_COLOR: ${{ steps.color-selector.outputs.SELECTED_COLOR }}
-        run: echo "The selected color is $SELECTED_COLOR"
-
           
-      - name: Get bootstrap pytorch .sif from 'Apptainer' (e.g. 25.01-py3)
+      - name: Get bootstrap pytorch .sif from 'Apptainer'
+      #  (e.g. 25.01-py3)
         id: bootstrap_sif
         run: |
             echo "sed -n 's/From: //p' apptainerfile.def"
@@ -313,26 +304,29 @@ jobs:
               sed -n 's/From: //p' apptainerfile.def
               echo EOF
             } >> "$GITHUB_OUTPUT"            
-            echo "output will be  "
-            echo "$GITHUB_OUTPUT"
+            cat "$GITHUB_OUTPUT"
+            
 
-      - name: Get bootstrap pytorch version from 'Apptainer' (e.g. 25.01-py3)
+      - name: Get bootstrap pytorch version from 'Apptainer'
+      #  (e.g. 25.01-py3)
         id: sif_pytorch_version
         run: |
             echo "SIF_PYTORCH_VERSION=$(sed -n 's/From: pytorch_//p' apptainerfile.def)" >> "$GITHUB_OUTPUT"
-            echo "$GITHUB_OUTPUT"
+            cat "$GITHUB_OUTPUT"
 
-      - name: Get dockerfile pytorch version from 'Dockerfile' (e.g. 25.01-py3)
+      - name: Get dockerfile pytorch version from 'Dockerfile'
+      #  (e.g. 25.01-py3)
         id: dockerfile_pytorch_version
         run: |
             echo "DOCKER_PYTORCH_VERSION=$(grep -Po 'pytorch:\K.*(?= as)' Dockerfile)" >> "$GITHUB_OUTPUT"
-            echo "$GITHUB_OUTPUT"
+            cat "$GITHUB_OUTPUT"
 
-      - name: Get dockerfile pytorch image from 'Dockerfile' (e.g. nvcr.io/nvidia/pytorch:25.01-py3)
+      - name: Get dockerfile pytorch image from 'Dockerfile' 
+      # (e.g. nvcr.io/nvidia/pytorch:25.01-py3)
         id: dockerfile_pytorch_image
         run: |
             echo "DOCKER_PYTORCH_IMAGE=$(grep -Po 'FROM \K.*(?= as)' Dockerfile)" >> "$GITHUB_OUTPUT"
-            echo "$GITHUB_OUTPUT"
+            cat "$GITHUB_OUTPUT"
 
       - name: Check if bootstrap SIF file "${{ steps.bootstrap_sif.outputs.SIF_FILE }}" exists
         id: check_if_bootstrap_SIF_exists
@@ -345,8 +339,7 @@ jobs:
         with:
           files: "~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }}"
 
-
-      - name: Raise error if dockerfile and apptainerfile.def disagree on pytorch version
+      - name: Raise error if pytorch dockerfile version (${{ steps.dockerfile_pytorch_version.outputs.DOCKER_PYTORCH_VERSION }}) and apptainerfile.def version (${{ steps.sif_pytorch_version.outputs.SIF_PYTORCH_VERSION }}) disagree
         if: ${{ ! startsWith( steps.sif_pytorch_version.outputs.SIF_PYTORCH_VERSION, steps.dockerfile_pytorch_version.outputs.DOCKER_PYTORCH_VERSION) }}
         env:
           DOCKERFILE_PYTORCH_IMAGE: ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
@@ -368,10 +361,8 @@ jobs:
             mkdir -p ~/SIF_files/
             apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
 
-      - name: Build ${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif from apptainer.def definition file
+      - name: Build ${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif from apptainerfile.def definition file
         run: |
-            apptainer remote login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-            apptainer pull ${{ matrix.CUDA_VERSION }}.sif oras://ghcr.io/${{ github.repository_owner}}/SIF_files/
             apptainer build --nv --force ${{ github.workspace }}/${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif apptainerfile.def
 
       # - name: Login and Push Apptainer SIF to github
