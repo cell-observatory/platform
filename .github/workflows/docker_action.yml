@@ -334,7 +334,7 @@ jobs:
             echo "DOCKER_PYTORCH_IMAGE=$(grep -Po 'FROM \K.*(?= as)' Dockerfile)" >> "$GITHUB_OUTPUT"
             echo "$GITHUB_OUTPUT"
 
-      - name: Check if bootstrap SIF file exists
+      - name: Check if bootstrap SIF file "${{ steps.bootstrap_sif.outputs.SIF_FILE }}" exists
         id: check_if_bootstrap_SIF_exists
         uses: andstor/file-existence-action@v3
         env:
@@ -358,16 +358,17 @@ jobs:
           script: |
               core.setFailed('dockerfile and apptainer.def recipe do not have the same pytorch version! SIF_PYTORCH_VERSION = $SIF_PYTORCH_VERSION DOCKER_PYTORCH_VERSION = $DOCKER_PYTORCH_VERSION')
 
-      - name: If apptainer bootstrap doesn't exist, build it.
+      - name: If apptainer bootstrap doesn't exist, build it ${{ steps.bootstrap_sif.outputs.SIF_FILE }} from ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
         if: steps.check_if_bootstrap_SIF_exists.outputs.files_exists == 'false'
         # Only runs if all of the files exists
         env:
           DOCKERFILE_PYTORCH_IMAGE: ${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
+          SIF_FILE: ${{ steps.bootstrap_sif.outputs.SIF_FILE }}
         run: |
             mkdir -p ~/SIF_files/
-            apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
+            apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
 
-      - name: Build Apptainer from apptainer.def definition file
+      - name: Build ${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}.sif from apptainer.def definition file
         run: |
             apptainer remote login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
             apptainer pull ${{ matrix.CUDA_VERSION }}.sif oras://ghcr.io/${{ github.repository_owner}}/SIF_files/
