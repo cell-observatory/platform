@@ -306,13 +306,11 @@ jobs:
           
       - name: Get bootstrap pytorch .sif from 'Apptainer' (e.g. 25.01-py3)
         id: bootstrap_sif
-        env:
-          TEXT: sed -n 's/From: //p' apptainerfile.def
         run: |
-            echo $TEXT
+            echo "sed -n 's/From: //p' apptainerfile.def"
             {
               echo 'SIF_FILE<<EOF'
-              $TEXT
+              sed -n 's/From: //p' apptainerfile.def
               echo EOF
             } >> "$GITHUB_OUTPUT"            
             echo "output will be  "
