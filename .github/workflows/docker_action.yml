@@ -407,5 +407,11 @@ jobs:
       - name: Test NVIDIA-SMI
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} nvidia-smi
 
-      # - name: Test ${{ env.test_framework }}
-      #   run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/test_pytorch.py
+      - name: Test /tests/data
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/data
+
+      - name: Test /tests/utils
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/utils
+
+      # - name: Test /tests/training
+      #   run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/training
