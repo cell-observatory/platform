@@ -407,11 +407,17 @@ jobs:
       - name: Test NVIDIA-SMI
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} nvidia-smi
 
-      - name: Test /tests/data
+      - name: pytest /tests/data
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} /tests/data
 
-      - name: Test /tests/utils
+      - name: pytest /tests/utils
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} /tests/utils
+        
+      - name: pytest /tests/models
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} /tests/models
 
-      # - name: Test /tests/training
-      #   run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/training
+      - name: pytest /tests/training
+        run: |
+          /bin/cp -fr ~/opticalaberrations/dataset .  || true
+            ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} /tests/training
+            
