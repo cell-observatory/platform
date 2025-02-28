@@ -23,12 +23,13 @@ concurrency:
   cancel-in-progress: ${{ !contains(github.head_ref || github.ref_name, 'release/') || !contains(github.head_ref || github.ref_name, 'main/') || !contains(github.head_ref || github.ref_name, 'develop/')}}
 
 env:
+  CUDA_VERSION: torch_cuda_12_8
   REGISTRY: ghcr.io  
   IMAGE_NAME: ${{ github.repository }}  # github.repository as <account>/<repo>
   DO_SIGNING: ${{ false }}
   BRANCH: ${{ github.head_ref || github.ref_name }}   # 'main' or 'develop'
   PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings
-
+  
 jobs:
   # cleanup-job:
   #   runs-on:
@@ -71,10 +72,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        include:
-          - CUDA_VERSION: "torch_cuda_12_8"
     steps:
       - name: Dump GitHub context
         env:
@@ -142,9 +139,9 @@ jobs:
             org.opencontainers.image.vendor=Advanced Bioimaging Center at UC Berkeley and Janelia Research Campus
           tags: |
             type=schedule
-            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=branch
-            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=tag
-            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=pr
+            type=ref,suffix=_${{ env.CUDA_VERSION }},event=branch
+            type=ref,suffix=_${{ env.CUDA_VERSION }},event=tag
+            type=ref,suffix=_${{ env.CUDA_VERSION }},event=pr
 
       - name: Build Docker image
         id: build-and-push
@@ -160,7 +157,7 @@ jobs:
           no-cache-filters: |
             pip_install
 # cache the nvidia image and setup.  Then don't cache the "pip_install" build stage where we pip install the requirements.txt
-          target: ${{ matrix.CUDA_VERSION }}
+          target: ${{ env.CUDA_VERSION }}
 
 
   docker-push:
@@ -170,10 +167,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        include:
-          - CUDA_VERSION: "torch_cuda_12_8"
     steps:
       - name: Dump GitHub context
         env:
@@ -241,9 +234,9 @@ jobs:
             org.opencontainers.image.vendor=Advanced Bioimaging Center at UC Berkeley and Janelia Research Campus
           tags: |
             type=schedule
-            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=branch
-            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=tag
-            type=ref,suffix=_${{ matrix.CUDA_VERSION }},event=pr
+            type=ref,suffix=_${{ env.CUDA_VERSION }},event=branch
+            type=ref,suffix=_${{ env.CUDA_VERSION }},event=tag
+            type=ref,suffix=_${{ env.CUDA_VERSION }},event=pr
 
       - name: Push Docker image
         id: docker-push
@@ -256,7 +249,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BRANCH_NAME=${{ env.BRANCH }}
-          target: ${{ matrix.CUDA_VERSION }}
+          target: ${{ env.CUDA_VERSION }}
 
 
   sif_path:
@@ -284,15 +277,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        include:
-          - CUDA_VERSION: "torch_cuda_12_8"
-            test_framework: "pytorch"
-      fail-fast: false  # do the other tests in the matrix even if one of them fails
-    env:
-      APPTAINER_RUN: apptainer exec --nv ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ matrix.CUDA_VERSION }}.sif
-
     steps:
       # The repo gets volume mapped into the container automatically
       - name: Checkout whole repo
@@ -387,16 +371,19 @@ jobs:
         run: |
             mkdir -p ~/SIF_files/  &&  apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
 
-      - name: Build "${{ needs.sif_path.outputs.SIF_PATH }}_${{ matrix.CUDA_VERSION }}.sif" from apptainerfile.def definition file
+      - name: Build "${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif" from apptainerfile.def definition file
+        id: apptainer_build
         run: |
             /bin/cp -sf ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} .
-            apptainer build --nv --force ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ matrix.CUDA_VERSION }}.sif apptainerfile.def
+            apptainer build --nv --force ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif apptainerfile.def
+
+            echo "APPTAINER_RUN=apptainer exec --nv ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif" >> "$GITHUB_OUTPUT"
 
       # - name: Login and Push Apptainer SIF to github
       #   run: |
       #       ls *.si*
       #       apptainer remote login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-      #       apptainer push -U ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ matrix.CUDA_VERSION }}.sif oras://ghcr.io/${{ github.repository }}:${{ github.head_ref || github.ref_name }}_${{ matrix.CUDA_VERSION }}_sif
+      #       apptainer push -U ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif oras://ghcr.io/${{ github.repository }}:${{ github.head_ref || github.ref_name }}_${{ env.CUDA_VERSION }}_sif
 
       - name: List files in the repository
         run: |
@@ -415,10 +402,10 @@ jobs:
           ls -lhXR
           
       - name: pip list 
-        run: ${{ env.APPTAINER_RUN }} pip list
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} pip list
 
       - name: Test NVIDIA-SMI
-        run:  ${{ env.APPTAINER_RUN }} nvidia-smi
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} nvidia-smi
 
-      # - name: Test ${{ matrix.test_framework }}
-      #   run: ${{ env.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/test_${{ matrix.test_framework }}.py
+      # - name: Test ${{ env.test_framework }}
+      #   run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/test_pytorch.py
