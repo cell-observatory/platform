@@ -46,7 +46,8 @@ jobs:
   #         rm -rf ./.??* || true
   #         ls -la ./
 
-  cleanup-job-docker-runners:
+
+  cleanup-docker-runners:
     runs-on:
       group: docker-runners
     container:
@@ -62,10 +63,9 @@ jobs:
           rm -rf ./.??* || true
           ls -la ./
 
-  build-docker:      
-    needs: cleanup-job-docker-runners
+  docker-build:      
+    needs: cleanup-docker-runners
     if: always()
-    name: docker_image_build
     runs-on:
       group: docker-runners
     permissions:
@@ -163,9 +163,8 @@ jobs:
           target: ${{ matrix.CUDA_VERSION }}
 
 
-  push-docker:
-    needs: build-docker
-    name: docker_image_push
+  docker-push:
+    needs: docker-build
     runs-on:
       group: docker-runners
     permissions:
@@ -278,7 +277,7 @@ jobs:
             cat "$GITHUB_OUTPUT"
 
 
-  build-and-test-apptainer:
+  apptainer-build-and-test:
     needs: sif_path
     runs-on:
       group: Default
