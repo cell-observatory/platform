@@ -66,7 +66,6 @@ jobs:
 
   docker-build:      
     needs: cleanup-docker-runners
-    if: always()
     runs-on:
       group: docker-runners
     permissions:
@@ -156,7 +155,7 @@ jobs:
             BRANCH_NAME=${{ env.BRANCH }}
           no-cache-filters: |
             pip_install
-# cache the nvidia image and setup.  Then don't cache the "pip_install" build stage where we pip install the requirements.txt
+          # cache the nvidia image and setup.  Then don't cache the "pip_install" build stage where we pip install the requirements.txt
           target: ${{ env.CUDA_VERSION }}
 
 
@@ -407,5 +406,17 @@ jobs:
       - name: Test NVIDIA-SMI
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} nvidia-smi
 
-      # - name: Test ${{ env.test_framework }}
-      #   run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/test_pytorch.py
+      - name: pytest /tests/data
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data
+
+      - name: pytest /tests/utils
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/utils
+        
+      - name: pytest /tests/models
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/models
+
+      - name: pytest /tests/training
+        run: |
+          /bin/cp -fr ~/opticalaberrations/dataset .  || true
+            ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/training
+            
