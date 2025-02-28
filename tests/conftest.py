@@ -1,25 +1,9 @@
 from pathlib import Path
 import pytest
-import multiprocessing
-import subprocess
-import re
-
-def get_gpu_count():
-    try:
-        output = subprocess.check_output(["nvidia-smi", "-L"], stderr=subprocess.STDOUT).decode("utf-8")
-        gpu_count = len(re.findall(r"GPU", output))
-        return gpu_count
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing nvidia-smi: {e}")
-        return 0
-    except FileNotFoundError:
-        print("nvidia-smi not found. Is the NVIDIA driver installed?")
-        return 0
 
 @pytest.fixture(scope="session")
 def kargs():
     repo = Path.cwd()
-
     kargs = dict(
         repo=repo,
         prediction_filename_pattern=r"*[!_gt|!_realspace|!_noisefree|!_predictions_psf|!_corrected_psf|!_reconstructed_psf].tif",
@@ -48,7 +32,7 @@ def kargs():
         finetune=None,
         profile=False,
         workers=1,
-        gpu_workers=min(get_gpu_count(), 2),
-        cpu_workers=min(multiprocessing.cpu_count(), 16),
+        gpu_workers=1,
+        cpu_workers=8,
     )
     return kargs
