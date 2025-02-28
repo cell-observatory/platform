@@ -408,10 +408,10 @@ jobs:
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} nvidia-smi
 
       - name: Test /tests/data
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/data
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} /tests/data
 
       - name: Test /tests/utils
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/utils
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} /tests/utils
 
       # - name: Test /tests/training
       #   run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} ${{ github.workspace }}/tests/training
