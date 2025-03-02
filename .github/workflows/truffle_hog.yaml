@@ -1,11 +1,13 @@
+name: 'Trufflehog: check if secrets are hardcoded in code'
 on:
+    workflow_dispatch:
     pull_request:
     push:
       branches:
         - main
         - feature/add_truffle_hog_github_action  
 jobs:
-    test:
+    scan_for_secrets:
         runs-on: ubuntu-latest
         steps:
         - name: Checkout code
