@@ -409,8 +409,11 @@ jobs:
       - name: Test NVIDIA-SMI
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} nvidia-smi
 
-      - name: pytest /tests/data
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data
+      - name: pytest /tests/data (excluding test_ray)
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data -k 'not ray'
+
+      - name: pytest /tests/data/test_ray.py
+        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data/test_ray.py
 
       - name: pytest /tests/utils
         run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/utils
