@@ -36,8 +36,8 @@ jobs:
       - name: Delete old images
         uses: snok/container-retention-policy@v3.0.0
         with:
-          image-names: ${{ github.repository }}
-          cut-off: 1w     # package versions should be older than 1 week, to be considered
+          image-names: "*"      # platform, aovift, ...
+          cut-off: 1w           # package versions should be older than 1 week, to be considered
           keep-n-most-recent: 3
           account: ${{ github.repository_owner }}    # Organization "cell-observatory"
           token: ${{ secrets.cleanup_packages }}
