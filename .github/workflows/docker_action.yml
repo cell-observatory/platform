@@ -29,6 +29,7 @@ env:
   DO_SIGNING: ${{ false }}
   BRANCH: ${{ github.head_ref || github.ref_name }}   # 'main' or 'develop'
   PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings --junit-xml=test_results/test-results_
+  TESTING: ${{ !contains(github.head_ref || github.ref_name, 'use_checksum_to_cache_apptainer_sif_build')}}  # skip tests if we have this branch name
   
 jobs:
   # cleanup-job:
@@ -433,7 +434,7 @@ jobs:
           id -u
           ls -lhXR
           
-      - name: Set APPTAINER_RUN
+      - name: Set APPTAINER_RUN command
         id: apptainer_run
         run: |
           rm -f test_results/* || true
@@ -449,15 +450,19 @@ jobs:
         run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_data.xml      tests/data -k 'not ray'
 
       - name: pytest /tests/data/test_ray.py
+        if: ${{ env.TESTING }}
         run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_data_ray.xml  tests/data/test_ray.py
 
       - name: pytest /tests/utils
+        if: ${{ env.TESTING }}
         run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_utils.xml     tests/utils
         
       - name: pytest /tests/models
+        if: ${{ env.TESTING }}
         run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_models.xml    tests/models
 
       - name: pytest /tests/training
+        if: ${{ env.TESTING }}
         run: |
           /bin/cp -fr ~/opticalaberrations/dataset .  || true
             ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_training.xml   tests/training
