@@ -403,7 +403,9 @@ jobs:
         run: |
             /bin/cp -sf ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} .
             apptainer build --nv --force ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }} apptainerfile.def
-            sha256sum requirements.txt Dockerfile apptainerfile.def > checksum
+            echo "done building ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}, now copying to ~/built_SIF for caching"
+            sha256sum requirements.txt Dockerfile apptainerfile.def >  ~/built_SIF/checksum
+            /bin/cp -f ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }} ~/built_SIF/built.sif
 
       # - name: Login and Push Apptainer SIF to github
       #   run: |
