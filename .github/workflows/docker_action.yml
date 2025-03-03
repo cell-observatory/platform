@@ -28,7 +28,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}  # github.repository as <account>/<repo>
   DO_SIGNING: ${{ false }}
   BRANCH: ${{ github.head_ref || github.ref_name }}   # 'main' or 'develop'
-  PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings --junit-xml=test_results/test-results  # will get appended with _data.xml, _utils.xml, _models.xml, _training.xml later...
+  PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings -r fEX --junit-xml=test_results/test-results  # will get appended with _data.xml, _utils.xml, _models.xml, _training.xml later...
   TESTING: ${{ !contains(github.head_ref || github.ref_name, 'use_checksum_to_cache_apptainer_sif_build')}}  # skip tests if we have this branch name
   
 jobs:
@@ -481,6 +481,8 @@ jobs:
       
           # (Optional) Select which results should be included in the report.
           # Follows the same syntax as `pytest -r`
+          #  Show extra test summary info as specified by chars: (f)ailed, (E)rror, (s)kipped, (x)failed, (X)passed, (p)assed, (P)assed with output, (a)ll except passed (p/P), or (A)ll.
+          #               (w)arnings are enabled by default (see --disable-warnings), 'N' can be used to reset the list. (default: 'fE').
           display-options: fEX
       
           # (Optional) Fail the workflow if no JUnit XML was found.
