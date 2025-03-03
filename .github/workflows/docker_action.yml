@@ -28,6 +28,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}  # github.repository as <account>/<repo>
   DO_SIGNING: ${{ false }}
   BRANCH: ${{ github.head_ref || github.ref_name }}   # 'main' or 'develop'
+  PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings --junit-xml=test_results/test-results_
   
 jobs:
   # cleanup-job:
@@ -459,3 +460,23 @@ jobs:
             
       - name: Surface failing tests
         if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          # A list of JUnit XML files, directories containing the former, and wildcard
+          # patterns to process.
+          # See @actions/glob for supported patterns.
+          path: test_results/*
+      
+          # (Optional) Add a summary of the results at the top of the report
+          summary: true
+      
+          # (Optional) Select which results should be included in the report.
+          # Follows the same syntax as `pytest -r`
+          display-options: fEX
+      
+          # (Optional) Fail the workflow if no JUnit XML was found.
+          fail-on-empty: true
+      
+          # (Optional) Title of the test results section in the workflow summary
+          title: Test results
+          
