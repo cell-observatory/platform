@@ -378,7 +378,8 @@ jobs:
         id: cache
         uses: corca-ai/local-cache@v2
         with:
-          path: ~/built_SIF
+          base: ~/.cache/github_action_local_cache
+          path: ~/built_SIF 
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-app-${{ hashFiles('**/apptainer.def') }}-dockerfile-${{ hashFiles('**/Dockerfile') }}
 
       - name: Copy cached apptainer build if checksums pass
