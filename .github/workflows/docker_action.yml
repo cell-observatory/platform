@@ -308,7 +308,11 @@ jobs:
               echo EOF
             } >> "$GITHUB_OUTPUT"            
             cat "$GITHUB_OUTPUT"
-            
+      
+      - name: Get built sif path
+        id: built_sif_path
+        run: |
+            echo "BUILT_SIF_PATH=${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif" >> "$GITHUB_OUTPUT"
 
       - name: Get bootstrap pytorch version from 'apptainerfile.def'
       #  (e.g. 25.01-py3)
@@ -370,13 +374,35 @@ jobs:
         run: |
             mkdir -p ~/SIF_files/  &&  apptainer build --nv --force ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} docker://${{ steps.dockerfile_pytorch_image.outputs.DOCKER_PYTORCH_IMAGE }}
 
+      - name: Cache apptainer build
+        id: cache
+        uses: corca-ai/local-cache@v2
+        with:
+          path: ~/built_SIF
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-app-${{ hashFiles('**/apptainer.def') }}-dockerfile-${{ hashFiles('**/Dockerfile') }}
+
+      - name: Copy cached apptainer build if checksums pass
+        run: |
+            rm -f ./${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}
+            sha256sum --check ~/built_SIF/checksum  &&  /bin/cp -f ~/built_SIF/built.sif ./${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}  || true
+
+      - name: Check if built SIF file "${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}" exists
+        id: check_if_built_SIF_exists
+        uses: andstor/file-existence-action@v3
+        env:
+          BUILT_SIF_FILE: ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}         
+        with:
+          files: ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}
+          ignore_case: true
+          fail: false # fail on missing files
+
       - name: Build "${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif" from apptainerfile.def definition file
+        if: steps.cache.outputs.cache-hit != 'true' || steps.check_if_built_SIF_exists.outputs.files_exists == 'false'
         id: apptainer_build
         run: |
             /bin/cp -sf ~/SIF_files/${{ steps.bootstrap_sif.outputs.SIF_FILE }} .
-            apptainer build --nv --force ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif apptainerfile.def
+            apptainer build --nv --force ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }} apptainerfile.def
 
-            echo "APPTAINER_RUN=apptainer exec --nv ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif" >> "$GITHUB_OUTPUT"
 
       # - name: Login and Push Apptainer SIF to github
       #   run: |
@@ -400,23 +426,31 @@ jobs:
           id -u
           ls -lhXR
           
+      - name: Set APPTAINER_RUN
+        id: apptainer_run
+        run: |
+          echo "APPTAINER_RUN=apptainer exec --nv ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif" >> "$GITHUB_OUTPUT"
+
       - name: pip list 
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} pip list
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} pip list
 
       - name: Test NVIDIA-SMI
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} nvidia-smi
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} nvidia-smi
 
-      - name: pytest /tests/data
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data
+      - name: pytest /tests/data (excluding test_ray)
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data -k 'not ray'
+
+      - name: pytest /tests/data/test_ray.py
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data/test_ray.py
 
       - name: pytest /tests/utils
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/utils
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/utils
         
       - name: pytest /tests/models
-        run: ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/models
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/models
 
       - name: pytest /tests/training
         run: |
           /bin/cp -fr ~/opticalaberrations/dataset .  || true
-            ${{ steps.apptainer_build.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/training
+            ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/training
             
