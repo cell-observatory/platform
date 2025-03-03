@@ -376,7 +376,7 @@ jobs:
 
       - name: Cache apptainer build
         id: cache
-        uses: corca-ai/local-cache@v2
+        uses: dmilkie/local-cache@main
         with:
           base: ~/.cache/github_action_local_cache
           path: ~/built_SIF 
