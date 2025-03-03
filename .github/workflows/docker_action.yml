@@ -28,7 +28,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}  # github.repository as <account>/<repo>
   DO_SIGNING: ${{ false }}
   BRANCH: ${{ github.head_ref || github.ref_name }}   # 'main' or 'develop'
-  PYTEST: python -m pytest --cache-clear -vvv --color=yes --disable-warnings
   
 jobs:
   # cleanup-job:
@@ -432,6 +431,7 @@ jobs:
       - name: Set APPTAINER_RUN
         id: apptainer_run
         run: |
+          rm -f test_results/* || true
           echo "APPTAINER_RUN=apptainer exec --nv ${{ github.workspace }}/${{ needs.sif_path.outputs.SIF_PATH }}_${{ env.CUDA_VERSION }}.sif" >> "$GITHUB_OUTPUT"
 
       - name: pip list 
@@ -441,19 +441,21 @@ jobs:
         run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} nvidia-smi
 
       - name: pytest /tests/data (excluding test_ray)
-        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data -k 'not ray'
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_data.xml      tests/data -k 'not ray'
 
       - name: pytest /tests/data/test_ray.py
-        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/data/test_ray.py
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_data_ray.xml  tests/data/test_ray.py
 
       - name: pytest /tests/utils
-        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/utils
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_utils.xml     tests/utils
         
       - name: pytest /tests/models
-        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/models
+        run: ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_models.xml    tests/models
 
       - name: pytest /tests/training
         run: |
           /bin/cp -fr ~/opticalaberrations/dataset .  || true
-            ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }} tests/training
+            ${{ steps.apptainer_run.outputs.APPTAINER_RUN }} ${{ env.PYTEST }}_training.xml   tests/training
             
+      - name: Surface failing tests
+        if: always()
