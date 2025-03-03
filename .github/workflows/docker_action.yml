@@ -384,10 +384,10 @@ jobs:
 
       - name: Copy cached apptainer build if checksums pass
         run: |
-            rm -f ./${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}
-            sha256sum --check ~/built_SIF/checksum  &&  /bin/cp -f ~/built_SIF/built.sif ./${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}  || true
+            rm -f ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}
+            sha256sum --check ~/built_SIF/checksum  &&  /bin/cp -f ~/built_SIF/built.sif ${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}  || true
 
-      - name: Check if built SIF file "${{ steps.built_sif_path.outputs.BUILT_SIF_PATH }}" exists
+      - name: Check if built SIF file exists
         id: check_if_built_SIF_exists
         uses: andstor/file-existence-action@v3
         env:
